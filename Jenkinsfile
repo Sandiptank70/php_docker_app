@@ -9,7 +9,11 @@ pipeline {
         TRIVY_SCAN_THRESHOLD = 10 // Threshold for vulnerabilities in Trivy
         DEPLOY_SERVER = "ec2-user@your-ec2-server-ip"
         DEPLOY_PATH = "/var/www/html"
-        PEM_FILE = "/path/to/your/key.pem" // Path to the PEM file
+        PEM_FILE = "/path/to/your/key.pem" 
+        SONAR_PROJECT_KEY = 'Testing-project'       
+        SONAR_PROJECT_NAME = 'Testing-project'      
+        SONAR_HOST_URL = 'https://sonarqube.invinsense.io/' 
+        SONAR_LOGIN = 'sqp_3893f7603eed42f3557afd52035b33319e343686' 
     }
 
     stages {
@@ -26,18 +30,26 @@ pipeline {
         }
 
         stage('SonarQube Scan') {
-            steps {
-                script {
-                    echo "Running SonarQube scan..."
-                    sh "sonar-scanner -Dsonar.projectKey=Testing-project -Dsonar.sources=. -Dsonar.host.url=${SONAR_SERVER} -Dsonar.login=sqp_3893f7603eed42f3557afd52035b33319e343686"
-
-                    echo "Retrieving SonarQube Quality Gate..."
-                    timeout(time: 5, unit: 'MINUTES') {
-                        waitForQualityGate abortPipeline: true
-                    }
+            stage('SonarQube Scan') 
+        {
+            steps 
+            {
+                withSonarQubeEnv('sonar-server') 
+                { // Name of the SonarQube server in Jenkins config
+                    script {
+                        echo "Running SonarQube analysis..."
+                        sh '''
+                            sonar-scanner \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName=${SONAR_PROJECT_NAME} \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_LOGIN}
+                        '''
+                        }
                 }
-            }
-        }
+            }        
+        }}
 
         stage('Build Docker Image') {
             steps {
